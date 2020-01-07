@@ -1,0 +1,2 @@
+[lemp]
+web-server-01 ansible_host=

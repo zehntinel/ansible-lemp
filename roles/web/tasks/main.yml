@@ -1,0 +1,56 @@
+---
+# tasks file for web
+
+- name: Install Nginx
+  apt:
+    name: nginx
+
+- name: Install PHP-FPM
+  apt: 
+    pkg: 
+       - "php{{ php_version }}"
+       - "php{{ php_version }}-apcu"
+       - "php{{ php_version }}-cli"
+       - "php{{ php_version }}-common"
+       - "php{{ php_version }}-curl"
+       - "php{{ php_version }}-dev"
+       - "php{{ php_version }}-fpm"
+       - "php{{ php_version }}-gd"
+       - "php{{ php_version }}-imap"
+       - "php{{ php_version }}-json"
+       - "php{{ php_version }}-mbstring"
+       - "php{{ php_version }}-opcache"
+       - "php{{ php_version }}-sqlite3"
+       - "php{{ php_version }}-xml"
+       - "php{{ php_version }}-yaml"
+
+- name: Configure php.ini
+  blockinfile:
+    path: /etc/php/{{ php_version }}/fpm/php.ini
+    block: |
+      date.time = {{ php_date_timezone }}
+    backup: yes
+  notify: 
+    - restart php-fpm
+
+- name: Create Nginx virtual host
+  template:
+    src: virtual_host.j2
+    dest: /etc/nginx/sites-enabled/{{ domain_name }}.conf
+  notify: 
+   - restart nginx
+
+- name: Create web root directory
+  file:
+    path: /var/www/{{ domain_name }}
+    state: directory
+
+- name: Upload index.php file to web root directory
+  template: 
+    src: index.php.j2
+    dest: /var/www/{{ domain_name }}/index.php
+
+- name: Allow Nginx HTTP
+  ufw:
+   rule: allow
+   name: "Nginx HTTP"

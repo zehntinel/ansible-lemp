@@ -1,0 +1,5 @@
+---
+# vars file for the playbooks
+
+server_timezone:
+domain_name:

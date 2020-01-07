@@ -1,0 +1,17 @@
+---
+# tasks file for common
+
+- name: install python
+  raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+
+- name: Update repositories
+  apt:
+    update_cache: yes
+
+- name: Upgrade all packages to the latest version
+  apt:
+    upgrade: dist
+
+- name: Setup server timezone to America/Mexico_City
+  timezone:
+    name: "{{ server_timezone }}"   

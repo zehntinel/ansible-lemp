@@ -3,3 +3,8 @@
 
 server_timezone:
 domain_name:
+
+mysql:
+  database:
+  user:
+  password:

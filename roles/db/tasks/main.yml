@@ -1,2 +1,22 @@
 ---
 # tasks file for db
+
+- name: Install MySQL
+  apt:
+    pkg:
+      - "mysql-server"
+      - "mysql-client"
+      - "python-mysqldb"
+    state: latest  
+
+- name: Create Database
+  mysql_db:
+      name: '{{ mysql.database }}'
+      state: present
+
+- name: Create User for database
+  mysql_user:
+      name: "{{ mysql.user }}"
+      password: "{{ mysql.password }}"
+      priv: "{{ mysql.database }}.*:ALL"
+      state: present

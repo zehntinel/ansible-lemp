@@ -1,5 +1,5 @@
 ---
-# vars file for the playbooks
+# vars file for the playbook
 
 server_timezone:
 domain_name:
@@ -8,3 +8,12 @@ mysql:
   database:
   user:
   password:
+
+letsencrypt:
+  account_email:
+  acme_directory: https://acme-v02.api.letsencrypt.org/directory
+  acme_version: 2
+  challenge: "http-01"
+  directory: /etc/letsencrypt
+  certificates_directory: /etc/letsencrypt/certificates
+  remaining_days: 45

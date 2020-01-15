@@ -1,0 +1,122 @@
+---
+- name: Create cert domain directory
+  file:
+    path: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: 0750
+
+- name: Create web domain acme-challenge directory
+  file:
+    path: "/var/www/{{ domain_name }}/.well-known/acme-challenge"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+# generate account key, if necessary
+- name: Find account.key
+  stat:
+    path: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/account.key"
+  register: account_key
+  become: no
+  run_once: true 
+
+- name: "Generate a Let's Encrypt account key"
+  shell: openssl genrsa 4096 > "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/account.key"
+  become: no
+  run_once: true
+  when: account_key.stat.exists == False
+
+# generate domain key, if necessary
+- name: Find domain.key
+  stat:
+    path: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.key"
+  register: domain_key
+  become: no
+  run_once: true
+
+- name: Generate domain.key
+  shell: openssl genrsa 4096 > "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.key"
+  become: no
+  run_once: true
+  when: domain_key.stat.exists == False
+
+  # generate domain csr, if necessary
+- name: Find domain.csr
+  stat:
+    path: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.csr"
+  register: domain_csr
+  become: no
+  run_once: true
+
+
+- name: Generate domain.csr
+  shell: openssl req -new -sha256 -key "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.key" -subj "/CN={{ domain_name }}" > "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.csr"
+  become: no
+  run_once: true
+  when: domain_csr.stat.exists == False
+
+- name: Create challenge
+  letsencrypt:
+    account_key_src: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/account.key"
+    csr: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.csr"
+    dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/signed.crt"
+    chain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/intermediate.pem"
+    fullchain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/combined.pem"
+    account_email: "{{ letsencrypt.account_email }}"
+    acme_directory: "{{ letsencrypt.acme_directory }}"
+    acme_version: "{{ letsencrypt.acme_version }}"
+    challenge: "{{ letsencrypt.challenge }}"
+    terms_agreed: true
+    remaining_days: "{{ letsencrypt.remaining_days }}"
+  become: no
+  run_once: true
+  register: create_challenge
+
+- name: Show SSL certificate generation output
+  debug:
+    var: create_challenge
+
+- name: "Implement http-01 challenge files"
+  copy:
+      content: "{{ create_challenge['challenge_data'][item]['http-01']['resource_value'] }}"
+      dest: "/var/www/{{ domain_name }}/{{ create_challenge['challenge_data'][item]['http-01']['resource'] | basename }}"
+      owner: root
+      group: root
+      mode: u=rw,g=r,o=r
+  become: no
+  run_once: true    
+  with_items:
+    - "{{ domain_name }}"
+
+
+- name: Create certificate
+  letsencrypt:
+    account_key_src: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/account.key"
+    csr: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.csr"
+    dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/signed.crt"
+    chain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/intermediate.pem"
+    fullchain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/combined.pem"
+    account_email: "{{ letsencrypt.account_email }}"
+    acme_directory: "{{ letsencrypt.acme_directory }}"
+    acme_version: "{{ letsencrypt.acme_version }}"
+    challenge: "{{ letsencrypt.challenge }}"
+    terms_agreed: true
+    remaining_days: "{{ letsencrypt.remaining_days }}"
+    data: "{{ create_challenge }}"
+
+  when: create_challenge is changed
+
+- name: Create Nginx secure virtual host
+  template:
+    src: secure_virtual_host.j2
+    dest: /etc/nginx/sites-enabled/{{ domain_name }}.conf
+  notify: 
+   - restart nginx
+
+- name: Allow UFW Nginx Full
+  ufw:
+    rule: allow
+    name: "Nginx Full"

@@ -5,7 +5,7 @@ server {
         ssl_certificate_key /etc/letsencrypt/certificates/adrian-galicia.dev/domain.key;
 
         listen 443;
-        server_name {{ domain_name }}
+        server_name {{ domain_name }};
 
         access_log   /var/log/nginx/ssl-{{ domain_name }}.access.log;
         error_log    /var/log/nginx/ssl-{{ domain_name }}.error.log;

@@ -3,7 +3,16 @@
 
 - name: Install Nginx
   apt:
-    name: nginx
+    pkg: 
+    - nginx
+    - zip
+    - unzip
+
+- name: Install nodejs & npm
+  apt:
+    pkg:
+      - nodejs
+      - npm
 
 - name: Install PHP-FPM
   apt: 
@@ -23,6 +32,8 @@
        - "php{{ php_version }}-sqlite3"
        - "php{{ php_version }}-xml"
        - "php{{ php_version }}-yaml"
+       - "php{{ php_version }}-zip"
+       - "php{{ php_version }}-mysql"
 
 - name: Configure php.ini
   blockinfile:
@@ -54,3 +65,30 @@
   ufw:
    rule: allow
    name: "Nginx HTTP"
+
+- name: Download composer
+  get_url:
+      dest: "{{ composer.installer }}" # required. Absolute path of where to download the file to.,If C(dest) is a directory, either the server provided filename or, if none provided, the base name of the URL on the remote server will be used. If a directory, C(force) has no effect.,If C(dest) is a directory, the file will always be downloaded (regardless of the C(force) option), but replaced only if the contents changed..
+      url: "https://getcomposer.org/installer" # required. HTTP, HTTPS, or FTP URL in the form (http|https|ftp)://[user[:pass]]@host.domain[:port]/path
+  tags:
+  - composer
+
+- name: Install composers
+  command: "{{ item }}"
+  with_items:
+    - "php {{ composer.installer }}"
+    - mv composer.phar /usr/local/bin/composer
+  tags:
+    - composer  
+
+- name: Remove composer installer
+  file:
+    path: "{{ composer.installer }}"
+    state: absent
+  tags:
+    - composer   
+
+- name: Print composer version
+  command: composer -v
+  register: version
+- debug: msg="{{ version.stdout_lines }}"

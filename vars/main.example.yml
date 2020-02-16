@@ -17,3 +17,6 @@ letsencrypt:
   directory: /etc/letsencrypt
   certificates_directory: /etc/letsencrypt/certificates
   remaining_days: 45
+
+composer:
+installer: /tmp/composer_installer.php

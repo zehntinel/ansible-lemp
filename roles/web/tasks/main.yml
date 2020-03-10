@@ -51,15 +51,22 @@
   notify: 
    - restart nginx
 
+- name: Ansible Check if root directory exists
+  stat:
+    path: /var/www/{{ domain_name }}
+  register: root_directory
+
 - name: Create web root directory
   file:
     path: /var/www/{{ domain_name }}
     state: directory
+  when: root_directory.stat.exists == false
 
 - name: Upload index.php file to web root directory
   template: 
     src: index.php.j2
     dest: /var/www/{{ domain_name }}/index.php
+  when: root_directory.stat.exists == false  
 
 - name: Allow Nginx HTTP
   ufw:

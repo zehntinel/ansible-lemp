@@ -58,56 +58,30 @@
   run_once: true
   when: domain_csr.stat.exists == False
 
-- name: Create challenge
-  letsencrypt:
+- name: Create a challenge using a account key file.
+  acme_certificate:
     account_key_src: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/account.key"
     csr: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.csr"
     dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/signed.crt"
-    chain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/intermediate.pem"
     fullchain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/combined.pem"
-    account_email: "{{ letsencrypt.account_email }}"
-    acme_directory: "{{ letsencrypt.acme_directory }}"
-    acme_version: "{{ letsencrypt.acme_version }}"
-    challenge: "{{ letsencrypt.challenge }}"
-    terms_agreed: true
-    remaining_days: "{{ letsencrypt.remaining_days }}"
-  become: no
-  run_once: true
   register: create_challenge
-
-- name: Show SSL certificate generation output
-  debug:
-    var: create_challenge
 
 - name: "Implement http-01 challenge files"
   copy:
-      content: "{{ create_challenge['challenge_data'][item]['http-01']['resource_value'] }}"
-      dest: "/var/www/{{ domain_name }}/{{ create_challenge['challenge_data'][item]['http-01']['resource'] | basename }}"
-      owner: root
-      group: root
-      mode: u=rw,g=r,o=r
-  become: no
-  run_once: true    
+      dest: "/var/www/{{ domain_name }}/{{ create_challenge['challenge_data']['adrian-galicia.dev']['http-01']['resource']}}"
+      content: "{{ create_challenge['challenge_data']['adrian-galicia.dev']['http-01']['resource_value'] }}"
   with_items:
     - "{{ domain_name }}"
+  when: create_challenge is changeds  
 
-
-- name: Create certificate
-  letsencrypt:
+- name: Let the challenge be validated and retrieve the cert and intermediate certificate
+  acme_certificate:
     account_key_src: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/account.key"
     csr: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/domain.csr"
     dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/signed.crt"
-    chain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/intermediate.pem"
-    fullchain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/combined.pem"
-    account_email: "{{ letsencrypt.account_email }}"
-    acme_directory: "{{ letsencrypt.acme_directory }}"
-    acme_version: "{{ letsencrypt.acme_version }}"
-    challenge: "{{ letsencrypt.challenge }}"
-    terms_agreed: true
-    remaining_days: "{{ letsencrypt.remaining_days }}"
+    fullchain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/fullchain.pem"
+    chain_dest: "{{ letsencrypt.certificates_directory }}/{{ domain_name }}/intermediate.crt"
     data: "{{ create_challenge }}"
-
-  when: create_challenge is changed
 
 - name: Create Nginx secure virtual host
   template:
